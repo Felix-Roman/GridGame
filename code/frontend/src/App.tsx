@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './Home';
-import Game from './Game';
+import Game from './game/Game';
 
 // this method should be used as a controller or router to determine what page the user is on
 // Look at the import statements at the top of this file and navigate to hose .tsx files to edit that page or moduel
