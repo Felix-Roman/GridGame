@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './LoginForm.css';
 
-const CreateAccount = ( ) => {
+export default function CreateAccount() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
@@ -22,6 +21,7 @@ const CreateAccount = ( ) => {
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                style={{ padding: '10px', fontSize: '16px', marginRight: '10px' }}
                 required
             />
             <input
@@ -29,6 +29,7 @@ const CreateAccount = ( ) => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                style={{ padding: '10px', fontSize: '16px', marginRight: '10px' }}
                 required
             />
             <input
@@ -36,12 +37,15 @@ const CreateAccount = ( ) => {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                style={{ padding: '10px', fontSize: '16px', marginRight: '10px' }}
                 required
             />
-            <button type="submit">Login</button>
+            <button type="submit"
+                style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+            >
+                submit
+            </button>
             </form>
         </div>
     );
 };
-
-export default CreateAccount;
