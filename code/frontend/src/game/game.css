@@ -1,29 +1,29 @@
 /* ==========================================================================
    game.css
-   Styles for the GridGame in-game screen (everything inside .gg-app).
+   Styles for the GridGame in-game screen everything inside .gg-app
 
-   Look: a utility control room. Slate-blue panels, signal-yellow for
+   Look, a utility control room, Slate-blue panels, signal-yellow for
    anything you can click, and the same three status colors everywhere
-   frequency appears (green = stable, orange = drifting, red = near trip).
+   frequency appears green = stable, orange = drifting, red = near trip
 
-   Every class starts with "gg-" so these styles can't clash with the Home
-   page or with index.css.
+   Every class starts with gg- so these styles can't clash with the Home
+   page or with index.css
 
-   Quick CSS vocabulary used in the comments:
-   - "--name: value"   defines a CSS variable; "var(--name)" uses it.
-   - flex              lays children out in one row or column.
-   - grid              lays children out in rows AND columns.
-   - gap               space between children of a flex/grid container.
-   - fr                one share of the leftover space in a grid.
-   - minmax(a, b)      a grid track that is at least a and at most b.
+   Quick CSS vocabulary used in the comments,
+   - --name: value"  defines a CSS variable, var(--name) uses it
+   - flex              lays children out in one row or column
+   - grid              lays children out in rows AND columns
+   - gap               space between children of a flex/grid container
+   - fr                one share of the leftover space in a grid
+   - minmax(a, b)      a grid track that is at least a and at most b
    ========================================================================== */
 
 
 /* ============================== App shell ============================== */
 
-/* The outermost wrapper of the game screen (the <div className="gg-app"> in Game.tsx). */
+/* The outermost wrapper of the game screen the <div className="gg-app"> in Game.tsx */
 .gg-app {
-  /* ---- Color palette. Change a color here and it updates everywhere. ---- */
+  /*  Color palette, Change a color here and it updates everywher,. */
   --bg: #121c25;          /* page background, the darkest slate */
   --panel: #1a2733;       /* the three big panels */
   --raised: #223343;      /* cards sitting on top of a panel */
@@ -50,7 +50,7 @@
   --radius-md: 9px;       /* cards */
   --radius-sm: 6px;       /* buttons and inputs */
 
-  /* ---- Fonts (loaded from Google Fonts in index.html; the rest are fallbacks) ---- */
+  /* ---- Fonts loaded from Google Fonts in index.html, the rest are fallbacks ---- */
   --font: 'Barlow', system-ui, 'Segoe UI', sans-serif;                     /* body text */
   --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;     /* headings and big numbers */
 
@@ -70,7 +70,7 @@
   -webkit-font-smoothing: antialiased;    /* smoother text rendering on macOS */
 }
 
-/* Apply to every element inside the game, plus ::before/::after pseudo-elements. */
+/* Apply to every element inside the game, plus before/after pseudo elements. */
 .gg-app *,
 .gg-app *::before,
 .gg-app *::after {
@@ -93,14 +93,14 @@
   color: inherit;                         /* and the surrounding text color */
 }
 
-/* Keyboard focus ring. :focus-visible only shows for keyboard users, not mouse clicks. */
+/* Keyboard focus ring, focus-visible only shows for keyboard users, not mouse clicks */
 .gg-app :focus-visible {
   outline: 3px solid var(--signal);       /* thick yellow outline */
   outline-offset: 2px;                    /* small gap between element and outline */
   border-radius: var(--radius-sm);        /* rounded outline corners */
 }
 
-/* "Screen-reader only": hides text visually but keeps it readable by screen readers. */
+/* Screen-reader only, hides text visually but keeps it readable by screen readers */
 .sr-only {
   position: absolute;                     /* take it out of the layout */
   width: 1px;                             /* shrink to 1x1 pixel */
@@ -116,12 +116,12 @@
 
 /* ---------- Status colors (shape + text always accompany color) ---------- */
 
-/* These set --status, which other rules use. Components add is-stable / is-drifting / is-critical. */
+/* These set --status, which other rules use. Components add is-stable/is-drifting/is-critical */
 .is-stable   { --status: var(--ok); }     /* green */
 .is-drifting { --status: var(--warn); }   /* orange */
 .is-critical { --status: var(--trip); }   /* red */
 
-/* The small rounded "✓ Stable" badge under the frequency number. */
+/* The small rounded ✓ Stable badge under the frequency number */
 .status-pill {
   display: inline-flex;                   /* icon and text in a row, but sized to its content */
   align-items: center;                    /* vertically center icon and text */
@@ -134,7 +134,7 @@
   font-size: 13px;
   white-space: nowrap;                    /* never wrap onto two lines */
 }
-/* The icon inside the pill. */
+/* The icon inside the pill */
 .status-pill svg {
   width: 14px;
   height: 14px;
