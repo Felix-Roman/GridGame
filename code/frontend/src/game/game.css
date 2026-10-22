@@ -1,0 +1,1514 @@
+/* ==========================================================================
+   game.css
+   Styles for the GridGame in-game screen (everything inside .gg-app).
+
+   Look: a utility control room. Slate-blue panels, signal-yellow for
+   anything you can click, and the same three status colors everywhere
+   frequency appears (green = stable, orange = drifting, red = near trip).
+
+   Every class starts with "gg-" so these styles can't clash with the Home
+   page or with index.css.
+
+   Quick CSS vocabulary used in the comments:
+   - "--name: value"   defines a CSS variable; "var(--name)" uses it.
+   - flex              lays children out in one row or column.
+   - grid              lays children out in rows AND columns.
+   - gap               space between children of a flex/grid container.
+   - fr                one share of the leftover space in a grid.
+   - minmax(a, b)      a grid track that is at least a and at most b.
+   ========================================================================== */
+
+
+/* ============================== App shell ============================== */
+
+/* The outermost wrapper of the game screen (the <div className="gg-app"> in Game.tsx). */
+.gg-app {
+  /* ---- Color palette. Change a color here and it updates everywhere. ---- */
+  --bg: #121c25;          /* page background, the darkest slate */
+  --panel: #1a2733;       /* the three big panels */
+  --raised: #223343;      /* cards sitting on top of a panel */
+  --sunken: #0f1820;      /* recessed areas: inputs, gauge tracks, battery cell */
+  --line: #34495c;        /* borders and dividers */
+  --text: #e4ebf1;        /* main text color */
+  --muted: #92a4b5;       /* secondary text: labels, hints */
+  --faint: #62778a;       /* least important text: placeholders, ticks */
+
+  --signal: #ffc94a;      /* yellow accent for anything interactive (buttons, focus, active tab) */
+  --signal-ink: #1d1600;  /* dark text color used on top of yellow */
+
+  --ok: #4fd1a5;          /* green: frequency stable */
+  --warn: #ff9f43;        /* orange: frequency drifting */
+  --trip: #ff5d5d;        /* red: frequency near the 58/62 Hz trip limit */
+
+  --storage: #5ab0f0;     /* blue for the battery and for charging */
+  --wind: #7fd8e6;        /* cyan for wind turbines */
+  --hydro: #8c9cff;       /* periwinkle for hydro generators and inertia */
+  --customer: #f09ad6;    /* pink for customers */
+
+  /* ---- Corner rounding sizes ---- */
+  --radius-lg: 14px;      /* big panels */
+  --radius-md: 9px;       /* cards */
+  --radius-sm: 6px;       /* buttons and inputs */
+
+  /* ---- Fonts (loaded from Google Fonts in index.html; the rest are fallbacks) ---- */
+  --font: 'Barlow', system-ui, 'Segoe UI', sans-serif;                     /* body text */
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;     /* headings and big numbers */
+
+  /* ---- Layout of the whole screen ---- */
+  position: fixed;                        /* pin the game to the browser window */
+  inset: 0;                               /* stretch to all four edges (top/right/bottom/left = 0) */
+  display: grid;                          /* stack the top bar and body as grid rows */
+  grid-template-rows: auto minmax(0, 1fr); /* row 1 = top bar at its natural height, row 2 = body takes the rest */
+  background:                             /* two layers, top layer first: */
+    radial-gradient(1200px 600px at 50% -10%, #1d3042 0%, transparent 60%), /* soft glow from the top center */
+    var(--bg);                            /* solid slate underneath */
+  color: var(--text);                     /* default text color */
+  font: 15px/1.45 var(--font);            /* 15px text, 1.45 line height, Barlow */
+  letter-spacing: 0.01em;                 /* very slightly open letter spacing */
+  text-align: left;                       /* undo the centered text set by index.css */
+  font-variant-numeric: tabular-nums;     /* all digits the same width, so changing numbers don't wiggle */
+  -webkit-font-smoothing: antialiased;    /* smoother text rendering on macOS */
+}
+
+/* Apply to every element inside the game, plus ::before/::after pseudo-elements. */
+.gg-app *,
+.gg-app *::before,
+.gg-app *::after {
+  box-sizing: border-box;                 /* width/height include padding and border, which makes sizing predictable */
+}
+
+/* All headings inside the game. */
+.gg-app h1, .gg-app h2, .gg-app h3, .gg-app h4 {
+  margin: 0;                              /* remove the browser's default heading spacing */
+  color: var(--text);                     /* override index.css heading color */
+  font-family: var(--font-display);       /* condensed face for headings */
+  font-weight: 600;                       /* semi-bold */
+  letter-spacing: 0.01em;                 /* match body spacing */
+  line-height: 1.15;                      /* tighter lines for headings */
+}
+
+/* All buttons inside the game. */
+.gg-app button {
+  font: inherit;                          /* buttons use the page font instead of the browser default */
+  color: inherit;                         /* and the surrounding text color */
+}
+
+/* Keyboard focus ring. :focus-visible only shows for keyboard users, not mouse clicks. */
+.gg-app :focus-visible {
+  outline: 3px solid var(--signal);       /* thick yellow outline */
+  outline-offset: 2px;                    /* small gap between element and outline */
+  border-radius: var(--radius-sm);        /* rounded outline corners */
+}
+
+/* "Screen-reader only": hides text visually but keeps it readable by screen readers. */
+.sr-only {
+  position: absolute;                     /* take it out of the layout */
+  width: 1px;                             /* shrink to 1x1 pixel */
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;                       /* hide anything that spills out */
+  clip: rect(0 0 0 0);                    /* clip to nothing */
+  white-space: nowrap;                    /* keep it on one line so it doesn't change size */
+  border: 0;
+}
+
+
+/* ---------- Status colors (shape + text always accompany color) ---------- */
+
+/* These set --status, which other rules use. Components add is-stable / is-drifting / is-critical. */
+.is-stable   { --status: var(--ok); }     /* green */
+.is-drifting { --status: var(--warn); }   /* orange */
+.is-critical { --status: var(--trip); }   /* red */
+
+/* The small rounded "✓ Stable" badge under the frequency number. */
+.status-pill {
+  display: inline-flex;                   /* icon and text in a row, but sized to its content */
+  align-items: center;                    /* vertically center icon and text */
+  gap: 6px;                               /* space between icon and text */
+  padding: 3px 10px 3px 8px;              /* top right bottom left */
+  border-radius: 999px;                   /* fully rounded ends (pill shape) */
+  background: color-mix(in srgb, var(--status) 16%, transparent); /* faint tint of the status color */
+  color: var(--status);                   /* text and icon in the status color */
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;                    /* never wrap onto two lines */
+}
+/* The icon inside the pill. */
+.status-pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+/* ================================ Top bar ================================ */
+
+/* The bar across the top (TopBar.tsx). */
+.gg-topbar {
+  display: flex;                          /* items in one row */
+  align-items: center;                    /* vertically centered */
+  gap: 24px;                              /* space between groups */
+  padding: 10px 20px;                     /* 10px top/bottom, 20px left/right */
+  border-bottom: 1px solid var(--line);   /* divider under the bar */
+  background: color-mix(in srgb, var(--panel) 85%, transparent); /* mostly opaque panel color */
+  min-height: 60px;                       /* never shorter than 60px */
+}
+/* Logo + "GridGame" + room chip group. */
+.gg-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;                     /* push everything after it to the right edge */
+}
+/* The diamond logo. */
+.gg-brand svg {
+  width: 30px;
+  height: 30px;
+}
+/* The "GridGame" title. */
+.gg-brand h1 {
+  font-size: 24px;
+}
+/* The "Room k7q2x [Copy]" chip. */
+.gg-room {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;                       /* space after the title */
+  padding: 3px 4px 3px 10px;              /* less padding on the right, where the Copy button sits */
+  border: 1px solid var(--line);
+  border-radius: 999px;                   /* pill shape */
+  color: var(--muted);                    /* "Room" label is muted */
+  font-size: 13px;
+}
+/* The room code itself. */
+.gg-room strong {
+  color: var(--text);                     /* brighter than the label */
+  font-weight: 600;
+  letter-spacing: 0.06em;                 /* spaced out so the code is easy to read aloud */
+}
+/* The "Copy" button inside the chip. */
+.gg-room button {
+  border: 0;
+  background: var(--raised);
+  border-radius: 999px;
+  padding: 2px 10px;
+  cursor: pointer;                        /* hand cursor on hover */
+  font-size: 12px;
+}
+/* Copy button hover. */
+.gg-room button:hover {
+  background: var(--line);                /* slightly lighter */
+}
+
+/* The "Time" and "Score" readouts: small label above a big number, right-aligned. */
+.gg-readout {
+  display: flex;
+  flex-direction: column;                 /* stack label, number, rate vertically */
+  align-items: flex-end;                  /* right-align them */
+  line-height: 1.05;                      /* tight stacking */
+}
+/* The small "Time"/"Score" labels. */
+.gg-readout span {
+  color: var(--muted);
+  font-size: 12px;
+}
+/* The big numbers. */
+.gg-readout strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+}
+/* The score number is yellow. */
+.gg-readout.money strong {
+  color: var(--signal);
+}
+/* The "+$300/s" income line is green. */
+.gg-readout .rate {
+  color: var(--ok);
+  font-size: 12px;
+}
+
+/* The "Players 3" button. */
+.gg-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;                               /* space between icon and label */
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  cursor: pointer;
+  font-weight: 600;
+}
+/* The people icon in that button. */
+.gg-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+/* Hover: lighter border. */
+.gg-icon-btn:hover {
+  border-color: var(--muted);
+}
+/* When the roster is open (aria-pressed="true"), the border turns yellow. */
+.gg-icon-btn[aria-pressed='true'] {
+  border-color: var(--signal);
+}
+
+/* The "● Online" indicator. */
+.gg-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+/* The dot. */
+.gg-conn i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;                     /* circle */
+  background: var(--faint);               /* grey while offline */
+}
+/* Green dot when online. */
+.gg-conn.online i {
+  background: var(--ok);
+}
+
+
+/* ================================ Body ================================ */
+
+/* The row under the top bar that holds the three panels. */
+.gg-body {
+  display: grid;
+  grid-template-columns: auto minmax(400px, 1fr) minmax(460px, 1.15fr); /* roster = its own width, deck = 1 share (min 400px), ops = 1.15 shares (min 460px) */
+  gap: 16px;                              /* space between panels */
+  padding: 16px;                          /* space around the edges */
+  min-height: 0;                          /* lets the grid row shrink so panels scroll inside instead of the page */
+}
+
+/* Shared look for the three big panels (roster, deck, ops). */
+.gg-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  min-height: 0;                          /* allow shrinking inside the grid */
+}
+
+
+/* ================================ Roster ================================ */
+
+/* The player list panel (PlayerRoster.tsx). */
+.gg-roster {
+  width: 256px;                           /* expanded width */
+  display: flex;
+  flex-direction: column;                 /* header on top, list below */
+  overflow: hidden;                       /* hide content that doesn't fit while animating */
+  transition: width 0.2s ease;            /* animate between expanded and collapsed */
+}
+/* Collapsed: just wide enough for the avatars. */
+.gg-roster.collapsed {
+  width: 68px;
+}
+/* The "Players 3  <" header row. */
+.gg-roster-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;         /* title on the left, arrow on the right */
+  padding: 14px 14px 10px 16px;
+}
+/* "Players" title. */
+.gg-roster-head h2 {
+  font-size: 19px;
+}
+/* The count after "Players". */
+.gg-roster-head .count {
+  color: var(--muted);
+  font-weight: 500;
+}
+/* When collapsed, center the arrow (the title is hidden). */
+.gg-roster.collapsed .gg-roster-head {
+  justify-content: center;
+  padding: 14px 0 10px;
+}
+
+/* The collapse/expand arrow button. */
+.gg-collapse {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;                    /* center the arrow icon */
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+}
+/* Arrow button hover. */
+.gg-collapse:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+/* The arrow icon. */
+.gg-collapse svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The <ul> of player cards. */
+.gg-roster-list {
+  list-style: none;                       /* no bullet points */
+  margin: 0;
+  padding: 0 10px 12px;
+  display: flex;
+  flex-direction: column;                 /* one card per row */
+  gap: 8px;
+  overflow-y: auto;                       /* scroll if there are many players */
+  min-height: 0;                          /* needed so the scroll works inside the flex column */
+}
+/* One player card. */
+.gg-player {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  border: 1px solid transparent;          /* invisible border so the "me" border below doesn't shift the layout */
+}
+/* Your own card gets a yellow outline. */
+.gg-player.me {
+  border-color: color-mix(in srgb, var(--signal) 55%, transparent);
+}
+/* Avatar + name row. */
+.gg-player-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* The round initials avatar. */
+.gg-avatar {
+  flex: none;                             /* never squash the circle */
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;                    /* center the initials */
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  background: var(--line);
+  color: var(--text);
+  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--status); /* a gap ring, then a ring in that player's frequency-status color */
+}
+/* Your avatar is yellow. */
+.gg-player.me .gg-avatar {
+  background: var(--signal);
+  color: var(--signal-ink);
+}
+/* Player name: cut off with "..." if too long. */
+.gg-player-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The "You" tag after your name. */
+.gg-player-name small {
+  color: var(--signal);
+  font-weight: 600;
+  margin-left: 6px;
+  font-size: 12px;
+}
+/* "$1,800 in 0:00:02" line under the name. */
+.gg-player-sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The Battery / Freq stats list (a <dl>). */
+.gg-player-stats {
+  margin: 10px 0 0;
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+}
+/* Each stat row: label | middle (bar or status) | value. */
+.gg-player-stats div {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;   /* fixed label column, flexible middle, value at its natural width */
+  align-items: center;
+  gap: 8px;
+}
+/* Stat labels ("Battery", "Freq"). */
+.gg-player-stats dt {
+  color: var(--muted);
+}
+/* Stat values. */
+.gg-player-stats dd {
+  margin: 0;                              /* remove the browser's default indent */
+  text-align: right;
+  font-weight: 600;
+}
+
+/* The thin battery bar track. */
+.gg-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sunken);
+  overflow: hidden;                       /* keep the fill's rounded corners inside */
+}
+/* The blue fill (its width is set inline from the battery percentage). */
+.gg-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--storage);
+  transition: width 0.4s ease;            /* animate when the battery changes */
+}
+
+/* The "Control settings" expandable section. */
+.gg-player details {
+  margin-top: 8px;
+  font-size: 13px;
+}
+/* The clickable "▸ Control settings" line. */
+.gg-player summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+/* Hover on that line. */
+.gg-player summary:hover {
+  color: var(--text);
+}
+/* Row of Main / Sum / Rate values. */
+.gg-pid {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+/* The labels. */
+.gg-pid span {
+  color: var(--muted);
+}
+/* The numbers. */
+.gg-pid strong {
+  color: var(--text);
+  margin-left: 4px;
+}
+
+/* Collapsed roster: cards become bare centered avatars. */
+.gg-roster.collapsed .gg-player {
+  padding: 8px 0;
+  background: transparent;
+  border: 0;
+  display: grid;
+  place-items: center;
+}
+/* Center the avatar row when collapsed. */
+.gg-roster.collapsed .gg-player-top {
+  justify-content: center;
+}
+
+/* "Connecting to the game server..." message when the list is empty. */
+.gg-roster-empty {
+  padding: 4px 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+
+/* ============================== Control deck ============================== */
+
+/* The center panel (ControlDeck.tsx): frequency on top, battery + dial in the middle, auto control at the bottom. */
+.gg-deck {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto; /* top and bottom at natural height, middle row gets the leftover space */
+  gap: 14px;
+  padding: 14px;
+  overflow: hidden;                       /* the deck never scrolls; everything is sized to fit */
+}
+
+/* Shared look for the cards inside the deck. */
+.gg-card {
+  background: var(--raised);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  min-height: 0;
+}
+/* Card header: title on the left, hint on the right. */
+.gg-card-head {
+  display: flex;
+  align-items: baseline;                  /* line up the text baselines of title and hint */
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+/* Card titles. */
+.gg-card-head h3 {
+  font-size: 18px;
+}
+/* Card hint text (e.g. "Drag the knob or use arrow keys"). */
+.gg-card-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---- Frequency hero card (FrequencyGauge.tsx) ---- */
+.gg-freq {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); /* gauge on the left (wider), readout on the right */
+  align-items: center;
+  gap: 8px 18px;                          /* 8px between rows, 18px between columns */
+  background:                             /* two layers: */
+    radial-gradient(420px 220px at 30% 100%, color-mix(in srgb, var(--status) 14%, transparent), transparent 70%), /* glow in the status color under the gauge */
+    var(--raised);                        /* normal card color underneath */
+  transition: background 0.6s ease;       /* the glow fades smoothly when status changes */
+}
+/* The gauge drawing. */
+.gg-freq > svg {
+  width: 100%;                            /* fill its column */
+  height: auto;                           /* keep its proportions */
+  max-height: 28vh;                       /* but never taller than 28% of the window height */
+  display: block;                         /* remove the small gap under inline SVGs */
+}
+/* Right side: title, number, pill, note stacked. */
+.gg-freq-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;                /* left-align, and keep the pill only as wide as its text */
+}
+/* "Grid frequency" title. */
+.gg-freq-readout h3 {
+  font-size: 18px;
+  color: var(--muted);
+  font-weight: 500;
+}
+/* The big "60.000" number. */
+.gg-freq-value {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 5.2vh, 60px);    /* grows with window height, but stays between 40px and 60px */
+  font-weight: 600;
+  line-height: 0.95;
+  color: var(--text);
+}
+/* The "Hz" after the number. */
+.gg-freq-value small {
+  font-size: 0.42em;                      /* 42% of the number's size */
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 4px;
+}
+/* "Keep it near 60 Hz..." note. */
+.gg-freq-note {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  max-width: 30ch;                        /* about 30 characters per line so it wraps nicely */
+}
+
+/* SVG parts of the gauge. In SVG, "stroke" is the line color and "fill" is the inside color. */
+/* The dark background arc. */
+.gauge-track {
+  fill: none;
+  stroke: var(--sunken);
+  stroke-width: 18;
+}
+/* The colored zone arcs (red/orange/green/orange/red); colors are set in FrequencyGauge.tsx. */
+.gauge-zone {
+  fill: none;
+  stroke-width: 12;
+}
+/* Minor tick marks (every 0.25 Hz). */
+.gauge-tick {
+  stroke: var(--faint);
+  stroke-width: 2;
+}
+/* Major tick marks (every whole Hz): brighter and thicker. */
+.gauge-tick.major {
+  stroke: var(--muted);
+  stroke-width: 2.5;
+}
+/* The 58 / 59 / 60 / 61 / 62 numbers. */
+.gauge-label {
+  fill: var(--muted);
+  font: 600 15px var(--font-display);     /* weight, size, family */
+}
+/* The needle group: rotates with a slight springy overshoot when frequency changes. */
+.gauge-needle {
+  transition: transform 0.45s cubic-bezier(.3,1.4,.5,1);
+}
+/* The needle line itself. */
+.gauge-needle line {
+  stroke: var(--text);
+  stroke-width: 4;
+  stroke-linecap: round;                  /* rounded tip */
+}
+/* The circle at the needle's base. */
+.gauge-hub {
+  fill: var(--text);
+  stroke: var(--raised);                  /* thin outline in the card color for separation */
+  stroke-width: 4;
+}
+/* The status-colored arc from 60 Hz to the current reading (shows how far off you are). */
+.gauge-glow {
+  fill: none;
+  stroke: var(--status);
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+/* ---- Middle row: battery + power dial side by side ---- */
+.gg-deck-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.3fr); /* battery narrower (min 150px), dial wider */
+  gap: 14px;
+  min-height: 0;
+}
+
+/* ---- Battery card (BatteryMeter.tsx) ---- */
+.gg-battery {
+  display: flex;
+  flex-direction: column;                 /* header on top, body fills the rest */
+}
+/* Battery cell + numbers row. */
+.gg-battery-body {
+  flex: 1;                                /* take all remaining height in the card */
+  display: flex;
+  gap: 14px;
+  align-items: stretch;                   /* make the cell as tall as the row */
+  min-height: 0;
+  padding-top: 4px;                       /* room for the battery terminal nub */
+}
+/* The battery outline. */
+.gg-cell {
+  position: relative;                     /* so the fill and lines can be positioned inside it */
+  flex: none;                             /* don't let it shrink or grow sideways */
+  width: 62px;
+  min-height: 120px;
+  border: 3px solid var(--line);
+  border-radius: 10px;
+  background: var(--sunken);              /* empty part of the battery */
+  overflow: hidden;                       /* keep the fill inside the rounded corners */
+}
+/* The little terminal nub on top of the battery, drawn with a pseudo-element. */
+.gg-cell::before {
+  content: '';                            /* required for ::before to appear */
+  position: absolute;
+  top: -3px;                              /* sit on the top border */
+  left: 50%;                              /* horizontally centered... */
+  translate: -50% -100%;                  /* ...and moved up above the cell */
+  width: 24px;
+  height: 7px;
+  background: var(--line);
+  border-radius: 3px 3px 0 0;             /* round only the top corners */
+}
+/* The blue charge level (its height is set inline from the battery percentage). */
+.gg-cell-fill {
+  position: absolute;
+  left: 3px;                              /* small inset from the edges */
+  right: 3px;
+  bottom: 3px;                            /* grows up from the bottom */
+  border-radius: 5px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--storage) 70%, #000), var(--storage)); /* darker at the bottom, brighter at the top */
+  transition: height 0.5s ease;           /* animate charge changes */
+}
+/* Container for the three horizontal divider lines across the cell. */
+.gg-cell-lines {
+  position: absolute;
+  inset: 0;                               /* cover the whole cell */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;          /* spread the lines evenly (25 / 50 / 75%) */
+  pointer-events: none;                   /* clicks pass through */
+}
+/* Each divider line. */
+.gg-cell-lines i {
+  display: block;
+  height: 2px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+/* "500 / of 1,000 capacity / 50% full" column. */
+.gg-battery-stats {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;                /* vertically centered next to the cell */
+  gap: 2px;
+}
+/* The big stored-energy number. */
+.gg-battery-stats .big {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+}
+/* "of 1,000 capacity". */
+.gg-battery-stats .of {
+  color: var(--muted);
+  font-size: 13px;
+}
+/* "50% full" in battery blue. */
+.gg-battery-stats .pct {
+  margin-top: 8px;
+  color: var(--storage);
+  font-weight: 600;
+}
+
+/* ---- Power dial card (PowerDial.tsx) ---- */
+.gg-dial {
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;            /* lets the @container rule below react to this card's own width */
+}
+/* When the dial card itself is 400px wide or less... */
+@container (max-width: 400px) {
+  /* ...hide the "Drag the knob" hint and the flow sub-text to save room... */
+  .gg-dial .gg-card-head p, .gg-flow span { display: none; }
+  /* ...and center the status + buttons row. */
+  .gg-dial-side { justify-content: center; }
+}
+/* Dial drawing on top, status and buttons below. */
+.gg-dial-wrap {
+  flex: 1;                                /* fill the card's remaining height */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+/* The dial SVG (it is also the draggable/focusable slider). */
+.gg-dial-svg {
+  flex: 1 1 0;                            /* take whatever height is left */
+  width: 100%;
+  min-height: 130px;                      /* never smaller than 130px */
+  touch-action: none;                     /* stop the page from scrolling while you drag the knob on a touchscreen */
+  cursor: grab;                           /* open-hand cursor */
+  display: block;
+  border-radius: 50%;                     /* makes the keyboard focus ring round */
+}
+/* Closed-hand cursor while dragging. */
+.gg-dial-svg:active {
+  cursor: grabbing;
+}
+/* Pull the focus ring inside the circle. */
+.gg-dial-svg:focus-visible {
+  outline-offset: -4px;
+}
+/* The dark background arc. */
+.dial-track {
+  fill: none;
+  stroke: var(--sunken);
+  stroke-width: 16;
+  stroke-linecap: round;
+}
+/* The colored arc from 0 to the current value. */
+.dial-fill {
+  fill: none;
+  stroke-width: 16;
+  stroke-linecap: round;
+  transition: stroke 0.2s;                /* fade between blue and yellow */
+}
+/* Negative values (charging the battery) are blue. */
+.dial-fill.charging {
+  stroke: var(--storage);
+}
+/* Positive values (discharging to the grid) are yellow. */
+.dial-fill.discharging {
+  stroke: var(--signal);
+}
+/* Tick marks around the dial. */
+.dial-tick {
+  stroke: var(--faint);
+  stroke-width: 2;
+}
+/* The -1000 / -500 / 0 / 500 / 1000 labels. */
+.dial-label {
+  fill: var(--muted);
+  font: 600 13px var(--font-display);
+}
+/* The round knob, shaded with the #knobGrad gradient defined inside the SVG. */
+.dial-knob {
+  fill: url(#knobGrad);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+/* The yellow dot on the knob that shows where it points. */
+.dial-pointer {
+  fill: var(--signal);
+}
+/* The big number in the middle of the knob. */
+.dial-value {
+  fill: var(--text);
+  font: 600 34px var(--font-display);
+}
+/* The word "power" under that number. */
+.dial-unit {
+  fill: var(--muted);
+  font: 500 13px var(--font);
+}
+
+/* Row under the dial: flow status on the left, -100 / Zero / +100 on the right. */
+.gg-dial-side {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;                        /* wrap to two lines if there isn't room */
+  width: 100%;
+}
+/* "Charging battery" / "Grid power is being stored". */
+.gg-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* The bold status line. */
+.gg-flow strong {
+  font-size: 15px;
+}
+/* The smaller explanation line. */
+.gg-flow span {
+  color: var(--muted);
+  font-size: 13px;
+}
+/* Blue when charging. */
+.gg-flow.charging strong {
+  color: var(--storage);
+}
+/* Yellow when discharging. */
+.gg-flow.discharging strong {
+  color: var(--signal);
+}
+/* The -100 / Zero / +100 button group. */
+.gg-nudges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ---- Shared button style (used by the dial buttons and the shop) ---- */
+.gg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.08s; /* smooth hover and press effects */
+}
+/* Hover (only when the button is enabled): lighter border. */
+.gg-btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+/* Pressed: nudge down 1px so it feels clicked. */
+.gg-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+/* Primary (yellow) buttons, e.g. "Buy for $100". */
+.gg-btn.primary {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--signal-ink);               /* dark text on yellow for contrast */
+}
+/* Primary hover: a lighter yellow. */
+.gg-btn.primary:hover:not(:disabled) {
+  background: #ffd56e;
+}
+/* Disabled buttons (e.g. can't afford): faded with a "not allowed" cursor. */
+.gg-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+/* Smaller variant for the dial's nudge buttons. */
+.gg-btn.small {
+  height: 28px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+/* ---- Automatic control card (AutoControl.tsx) ---- */
+.gg-auto {
+  display: grid;
+  grid-template-columns: auto 1fr;        /* title + switch on the left, the three inputs fill the rest */
+  align-items: center;
+  gap: 10px 20px;
+}
+/* Title above the On/Off switch. */
+.gg-auto-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* "Automatic control" title. */
+.gg-auto-title h3 {
+  font-size: 18px;
+}
+/* The Main / Sum / Rate inputs, in three equal columns. */
+.gg-gains {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+/* One label + input pair. */
+.gg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* The label ("Main"). */
+.gg-field label {
+  font-size: 13px;
+  color: var(--muted);
+}
+/* The "Kp" / "Ki" / "Kd" abbreviation after the label. */
+.gg-field label abbr {
+  text-decoration: none;                  /* remove the browser's dotted underline */
+  color: var(--faint);
+  margin-left: 4px;
+}
+/* Number inputs. */
+.gg-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  color: var(--text);
+  font: 600 16px var(--font);
+  font-variant-numeric: tabular-nums;
+}
+/* Disabled inputs (e.g. the Market form) are dimmer. */
+.gg-input:disabled {
+  color: var(--faint);
+}
+/* Hover on enabled inputs. */
+.gg-input:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+/* The On/Off toggle switch (a button with role="switch"). */
+.gg-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;                              /* space between the track and the "On" text */
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+/* The pill-shaped track. */
+.gg-switch .track {
+  position: relative;                     /* so the thumb can be positioned inside it */
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  transition: background 0.2s;
+}
+/* The round thumb that slides. */
+.gg-switch .thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.2s, background 0.2s; /* slide and recolor smoothly */
+}
+/* When on: green-tinted track... */
+.gg-switch[aria-checked='true'] .track {
+  background: color-mix(in srgb, var(--ok) 30%, var(--sunken));
+  border-color: var(--ok);
+}
+/* ...and the thumb slides 20px right and turns green. */
+.gg-switch[aria-checked='true'] .thumb {
+  transform: translateX(20px);
+  background: var(--ok);
+}
+
+
+/* ============================== Ops panel ============================== */
+
+/* The right-hand panel (OpsPanel.tsx): tab row on top, scrolling content below. */
+.gg-ops {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  container-type: inline-size;            /* lets the @container rule below react to this panel's width */
+}
+/* When the ops panel is 640px wide or less, drop the tab icons and tighten padding so all five tabs fit. */
+@container (max-width: 640px) {
+  .gg-tab svg { display: none; }
+  .gg-tab { padding: 10px 11px 12px; }
+}
+
+/* The tab row. */
+.gg-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--line);   /* line the active tab's yellow underline sits on */
+  overflow-x: auto;                       /* scroll sideways on very small screens instead of wrapping */
+  scrollbar-width: none;                  /* hide that scrollbar (Firefox) */
+}
+/* One tab button. */
+.gg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;                               /* space between icon and label */
+  padding: 10px 14px 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);                    /* inactive tabs are muted */
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0; /* round only the top corners */
+  position: relative;                     /* anchor for the underline below */
+}
+/* Tab icons. */
+.gg-tab svg {
+  width: 17px;
+  height: 17px;
+}
+/* Tab hover. */
+.gg-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--raised) 60%, transparent);
+}
+/* The selected tab has bright text... */
+.gg-tab[aria-selected='true'] {
+  color: var(--text);
+}
+/* ...and a yellow underline drawn with a pseudo-element. */
+.gg-tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;                           /* sit on top of the row's bottom border */
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--signal);
+}
+
+/* The content area under the tabs. This is the only part of the screen that scrolls. */
+.gg-tabpanel {
+  flex: 1;                                /* fill the remaining height */
+  min-height: 0;                          /* required for the scroll to work inside the flex column */
+  overflow-y: auto;                       /* scroll vertically when content is long */
+  padding: 18px 20px 20px;
+}
+/* Header inside a tab: title on the left, sub-switch on the right. */
+.gg-tabpanel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;                        /* the switch drops below the title if there isn't room */
+  margin-bottom: 16px;
+}
+/* Tab titles ("Assets", "Market"). */
+.gg-tabpanel-head h2 {
+  font-size: 24px;
+}
+
+/* ---- Segmented sub-switch (the only second level of tabs) ---- */
+.gg-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--sunken);
+  border-radius: 999px;                   /* pill shape */
+}
+/* Each option in the switch. */
+.gg-seg button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+/* Option hover. */
+.gg-seg button:hover {
+  color: var(--text);
+}
+/* The selected option looks raised. */
+.gg-seg button[aria-selected='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line); /* thin inner border */
+}
+
+/* ---- Asset shop (AssetsTab.tsx) ---- */
+/* The "Available funds  $1,800" bar. */
+.gg-funds {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;         /* label left, amount right */
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+}
+/* "Available funds" label. */
+.gg-funds span {
+  color: var(--muted);
+}
+/* The amount, in yellow. */
+.gg-funds strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--signal);
+}
+
+/* The <ul> of shop items. */
+.gg-shop {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* One shop row: icon | name + description | owned count | button. */
+.gg-item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto; /* fixed icon, flexible text, count and button at natural width */
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  border-left: 4px solid var(--kind);     /* colored stripe on the left in the asset's color */
+}
+/* The square icon tile. */
+.gg-item-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--kind) 16%, transparent); /* faint tint of the asset color */
+  color: var(--kind);                     /* icon in the asset color */
+}
+/* The icon itself. */
+.gg-item-icon svg {
+  width: 26px;
+  height: 26px;
+}
+/* Asset name ("Wind turbine"). */
+.gg-item h3 {
+  font-size: 19px;
+}
+/* Description line. */
+.gg-item p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+/* "Need $200 more" / "Unlocks when..." in orange. */
+.gg-item .reason {
+  color: var(--warn);
+}
+/* Owned count column. */
+.gg-owned {
+  text-align: right;
+  min-width: 70px;
+}
+/* The big owned number. */
+.gg-owned strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+}
+/* "owned" / "capacity" label under it. */
+.gg-owned span {
+  color: var(--muted);
+  font-size: 12px;
+}
+/* After a purchase, the number briefly pops (the "bump" animation below). */
+.gg-owned strong.bump {
+  animation: bump 0.45s ease;
+}
+/* The pop: at 40% of the animation, grow to 125% size and turn yellow, then return. */
+@keyframes bump {
+  40% { transform: scale(1.25); color: var(--signal); }
+}
+/* Make all buy buttons the same width so they line up. */
+.gg-item .gg-btn {
+  min-width: 118px;
+}
+
+/* Each shop row sets --kind to its asset color; .gg-item uses it for the stripe and icon. */
+.kind-storage  { --kind: var(--storage); }
+.kind-wind     { --kind: var(--wind); }
+.kind-hydro    { --kind: var(--hydro); }
+.kind-customer { --kind: var(--customer); }
+
+/* The grid inertia box under the shop. */
+.gg-inertia {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--line);         /* dashed border marks it as info, not something to click */
+  display: grid;
+  grid-template-columns: auto 1fr;        /* value on the left, title on the right */
+  gap: 6px 18px;
+  align-items: center;
+}
+/* The big "0.20" value. */
+.gg-inertia .val {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--hydro);
+  line-height: 1;
+}
+/* "Grid inertia" title. */
+.gg-inertia h3 {
+  font-size: 17px;
+}
+/* Explanation paragraph, spanning both columns. */
+.gg-inertia p {
+  grid-column: 1 / -1;                    /* from the first column line to the last */
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 70ch;                        /* keep lines readable */
+}
+
+/* ---- Overview tiles (OverviewTab.tsx) ---- */
+.gg-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* as many 150px+ columns as fit */
+  gap: 10px;
+}
+/* One tile. */
+.gg-tile {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+/* Tile label. */
+.gg-tile span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+/* Tile value. */
+.gg-tile strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+/* Tiles waiting on the engine show a dim dash. */
+.gg-tile.pending strong {
+  color: var(--faint);
+}
+/* "Your grid" / "From the simulation engine" headings. */
+.gg-section-title {
+  font-size: 17px;
+  margin: 20px 0 10px;
+  color: var(--muted);
+  font-weight: 500;
+}
+/* No top margin on the first heading in a tab. */
+.gg-section-title:first-child {
+  margin-top: 0;
+}
+
+/* ---- Chart and table shells (GenLoadTab.tsx, MarketTab.tsx) ---- */
+.gg-shell {
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+/* Shell header: title left, legend right. */
+.gg-shell-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* Shell title. */
+.gg-shell-head h3 {
+  font-size: 18px;
+}
+/* Chart legend list. */
+.gg-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+/* One legend entry. */
+.gg-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The colored line swatch; --c is set inline per series. */
+.gg-legend i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--c);
+}
+/* Empty chart area with faint horizontal grid lines. */
+.gg-plot {
+  margin-top: 10px;
+  height: 110px;
+  border-radius: var(--radius-sm);
+  background:                             /* two layers: */
+    repeating-linear-gradient(to bottom, transparent 0 26px, color-mix(in srgb, var(--line) 55%, transparent) 26px 27px), /* a 1px line every 27px */
+    var(--sunken);                        /* dark base */
+  display: grid;
+  place-items: center;                    /* center the "starts once the engine..." message */
+  color: var(--faint);
+  font-size: 13px;
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* Contract tables. */
+.gg-table {
+  width: 100%;
+  border-collapse: collapse;              /* single borders instead of doubled cell borders */
+  margin-top: 10px;
+  font-size: 13px;
+}
+/* Column headers. */
+.gg-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+/* Body cells (currently just the "No contracts" message). */
+.gg-table td {
+  padding: 18px 8px;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* The "Offer a contract" form: three equal columns. */
+.gg-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+/* Button + note row under the form. */
+.gg-form-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---- Empty states ("isn't available yet" messages) ---- */
+.gg-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+/* The big icon. */
+.gg-empty svg {
+  width: 40px;
+  height: 40px;
+  color: var(--faint);
+}
+/* Empty-state title. */
+.gg-empty h3 {
+  font-size: 20px;
+}
+/* Empty-state message. */
+.gg-empty p {
+  margin: 0;
+  max-width: 46ch;
+}
+
+
+/* ============================== Responsive ============================== */
+/* @media rules apply only when the window matches the condition. Later rules override earlier ones. */
+
+/* Windows 1280px wide or less: slightly narrower columns and roster. */
+@media (max-width: 1280px) {
+  .gg-body { grid-template-columns: auto minmax(380px, 1fr) minmax(400px, 1fr); }
+  .gg-roster:not(.collapsed) { width: 220px; }
+}
+
+/* Short windows (820px tall or less, e.g. 1366x768 laptops): tighten spacing so the deck still fits. */
+@media (max-height: 820px) {
+  .gg-body { padding: 12px; gap: 12px; }
+  .gg-deck { padding: 12px; gap: 12px; }
+  .gg-card { padding: 12px 14px; }
+}
+
+/* Tablets and phones (1080px wide or less): stack the panels and let the page scroll. */
+@media (max-width: 1080px) {
+  .gg-app { position: static; min-height: 100svh; display: block; }      /* stop pinning to the window; normal scrolling page */
+  .gg-topbar { flex-wrap: wrap; gap: 12px 18px; }                        /* top bar items may wrap */
+  .gg-body { grid-template-columns: 1fr; }                               /* one column: roster, deck, ops stacked */
+  .gg-roster, .gg-roster.collapsed { width: auto; }                      /* roster spans the full width */
+  .gg-roster.collapsed .gg-roster-list { flex-direction: row; overflow-x: auto; } /* collapsed avatars sit in a row */
+  .gg-ops { min-height: 520px; }                                         /* give the tabs enough room */
+  .gg-freq > svg { max-height: none; }                                   /* gauge can be as tall as it needs */
+  .gg-dial-svg { flex: none; height: auto; max-width: 300px; aspect-ratio: 1; } /* dial is a square, at most 300px */
+}
+
+/* Phones (560px wide or less): single-column cards. */
+@media (max-width: 560px) {
+  .gg-freq { grid-template-columns: 1fr; }                               /* gauge above the readout */
+  .gg-deck-row { grid-template-columns: 1fr; }                           /* battery above the dial */
+  .gg-auto { grid-template-columns: 1fr; }                               /* auto-control title above the inputs */
+  .gg-item { grid-template-columns: 40px minmax(0, 1fr) auto; }          /* shop row: icon | text | button */
+  .gg-item > div:nth-child(2) { grid-column: 2 / -1; }                   /* name + description span the full width */
+  .gg-item .gg-owned { grid-column: 2; text-align: left; }               /* owned count on its own line, left-aligned */
+  .gg-item .gg-btn { grid-column: 3; min-width: 0; }                     /* button next to the count */
+  .gg-item-icon { width: 40px; height: 40px; }                           /* smaller icon */
+  .gg-form { grid-template-columns: 1fr; }                               /* contract form fields stacked */
+  .gg-room { display: none; }                                            /* hide the room chip to save space */
+}
+
+/* Players who turned on "reduce motion" in their OS get (almost) no animations. */
+@media (prefers-reduced-motion: reduce) {
+  .gg-app *, .gg-app *::before, .gg-app *::after {
+    animation-duration: 0.01ms !important;   /* animations finish instantly */
+    transition-duration: 0.01ms !important;  /* transitions finish instantly */
+  }
+}
