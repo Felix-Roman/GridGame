@@ -1,111 +1,116 @@
 // =============================================================================
 // PowerDial.tsx
-// The Grid Power Control knob. Range -1000..1000 over a 270° sweep, with 0 at
-// the top. Per the EE document: positive values send battery energy out to the
-// grid (discharging), negative values pull grid energy into the battery
-// (charging). Works three ways: drag with mouse/touch, keyboard (it is an
-// ARIA slider), and the -100 / Zero / +100 buttons.
+// The Grid Power Control knob.
+// Range -1000 to 1000 over a 270° sweep with 0 at the top 
+// Per the EE document, positive values send battery energy out to the grid (discharging) 
+// negative values pull grid energy into the battery (charging) 
 // =============================================================================
 
 // useRef keeps values between renders without redrawing; KeyboardEvent and PointerEvent are TypeScript types only.
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 
-// Value limits, and SWEEP = how many degrees each side of 0 the dial turns (135 left + 135 right = 270).
+// Value limits, and SWEEP = how many degrees each side of 0 the dial turns
 const MIN = -1000, MAX = 1000, SWEEP = 135;
-// Dial geometry in SVG units: C = center x and y, R = radius of the track arc.
+
+// Dial geometry in SVG units so C = center x and y, R = radius of the track arc
 const C = 120, R = 94;
 
-// Converts a value to an angle in degrees (-1000 = -135°, 0 = 0°, 1000 = +135°).
+// Converts a value to an angle in degrees
 const toDeg = (v: number) => (v / MAX) * SWEEP;
-// Converts an angle (0° = straight up, clockwise positive) and radius into an x,y point around the center.
+// Converts an angle (0° = straight up, clockwise positive) and radius into an x,y point around the center
 const pt = (deg: number, r: number) => {
-  // Degrees to radians.
+  // Degrees to radians
   const a = (deg * Math.PI) / 180;
-  // sin gives the horizontal offset, cos the vertical. SVG's y axis points down, so it is subtracted.
+  // sin gives the horizontal offset, cos the vertical, SVG's y axis points down, so it is subtracted
   return [C + r * Math.sin(a), C - r * Math.cos(a)] as const;
-// Closes pt.
 };
-// Builds an SVG path string for an arc between two angles, at radius r (defaults to the track radius).
+
+// Builds an SVG path string for an arc between two angles at radius r
 const arcPath = (d0: number, d1: number, r = R) => {
-  // Always draw from the smaller angle to the larger one.
+  // Always draw from the smaller angle to the larger one
   const a = Math.min(d0, d1), b = Math.max(d0, d1);
-  // Start point.
+  // Start point
   const [x0, y0] = pt(a, r);
-  // End point.
+  // End point
   const [x1, y1] = pt(b, r);
-  // "A" draws a circular arc. The large-arc flag is 1 when the arc covers more than 180°; the final 1 means clockwise.
   return `M ${x0} ${y0} A ${r} ${r} 0 ${b - a > 180 ? 1 : 0} 1 ${x1} ${y1}`;
-// Closes arcPath.
 };
-// Rounds to a whole number and keeps it within -1000..1000.
+
+// Rounds to a whole number and keeps it within -1000 and 1000
 const clamp = (v: number) => Math.max(MIN, Math.min(MAX, Math.round(v)));
 
-// Describes the power flow for a value: a CSS class plus the text shown under the dial.
+// Describes the power flow for a value
 export function flowOf(value: number) {
-  // Positive: battery is pushing power out to the grid.
+  // Positive so the battery is pushing power out to the grid
   if (value > 0) return { cls: 'discharging', title: 'Discharging to grid', sub: 'Battery is supplying power' };
-  // Negative: grid power is going into the battery.
+  // Negative so the grid power is going into the battery
   if (value < 0) return { cls: 'charging', title: 'Charging battery', sub: 'Grid power is being stored' };
-  // Exactly 0: nothing moving.
+  // Exactly 0, then nothing moving
   return { cls: 'idle', title: 'Idle', sub: 'No power in or out' };
-// Closes flowOf.
 }
 
-// The component. value = current dial setting, onChange = called with the new setting.
-export default function PowerDial({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  // Reference to the <svg> element, so we can measure where it is on screen.
+// The props. value = current dial setting (kW). locked = automatic control is turning the dial,
+// so dragging/keys/buttons are disabled. flowKw = what the battery is ACTUALLY doing (it can't
+// discharge when empty), used for the status line under the dial.
+type Props = { value: number; onChange: (v: number) => void; locked?: boolean; flowKw?: number; spilledKw?: number };
+
+// The component
+export default function PowerDial({ value, onChange, locked = false, flowKw, spilledKw = 0 }: Props) {
+  // Reference to the <svg> element
   const ref = useRef<SVGSVGElement>(null);
   // True while the player is holding the pointer down on the dial (no redraw needed, so useRef, not useState).
   const dragging = useRef(false);
 
-  // Converts a pointer position (mouse or finger) into a dial value.
+  // Converts a pointer position (mouse or finger) into a dial value
   const fromPointer = (e: PointerEvent) => {
-    // The SVG element.
+    // The SVG element
     const el = ref.current;
-    // Safety check: do nothing if it isn't on the page.
+    // Safety check: do nothing if it isn't on the page
     if (!el) return;
-    // Its position and size on screen.
+    // Its position and size on screen
     const rect = el.getBoundingClientRect();
-    // Pointer's horizontal distance from the dial's center (right is positive).
+    // Pointer's horizontal distance from the dial's center
     const x = e.clientX - (rect.left + rect.width / 2);
-    // Pointer's vertical distance from the center (down is positive).
+    // Pointer's vertical distance from the center
     const y = e.clientY - (rect.top + rect.height / 2);
-    // Angle of the pointer around the center: 0° at the top, clockwise positive.
-    let deg = (Math.atan2(x, -y) * 180) / Math.PI; // 0 at top, clockwise positive
-    // Stop at the ends of the sweep, so dragging past -1000/1000 doesn't wrap around.
+    // Angle of the pointer around the center, clockwise positive
+    let deg = (Math.atan2(x, -y) * 180) / Math.PI;
+    // Stop at the ends of the sweep
     deg = Math.max(-SWEEP, Math.min(SWEEP, deg));
-    // Convert the angle back to a value and report it.
+    // Convert the angle back to a value and report it
     onChange(clamp((deg / SWEEP) * MAX));
-  // Closes fromPointer.
   };
 
-  // Keyboard controls while the dial has focus.
+  // Keyboard controls while the dial has focus
   const onKeyDown = (e: KeyboardEvent) => {
-    // Arrow keys move by 10, or by 100 when Shift is held.
+    // Automatic control owns the dial while it's on
+    if (locked) return;
+    // Arrow keys move by 10, or by 100 when Shift is held
     const big = e.shiftKey ? 100 : 10;
-    // Maps each supported key to the value it should produce.
+    // Maps each supported key to the value it should produce
     const map: Record<string, number> = {
-      ArrowRight: value + big, ArrowUp: value + big,     // increase
-      ArrowLeft: value - big, ArrowDown: value - big,    // decrease
-      PageUp: value + 100, PageDown: value - 100,        // jump by 100
-      Home: MIN, End: MAX, '0': 0,                       // go to -1000, 1000, or 0
-    // Closes the key map.
+      ArrowRight: value + big, ArrowUp: value + big,
+      ArrowLeft: value - big, ArrowDown: value - big,
+      PageUp: value + 100, PageDown: value - 100,
+      Home: MIN, End: MAX, '0': 0,
     };
-    // Only act on keys in the map.
+    // Only act on keys in the map
     if (e.key in map) {
-      // Stop the browser's default action (e.g. arrow keys scrolling the page).
+      // Stop the browser's default action
       e.preventDefault();
-      // Report the new value, kept within range.
+      // Report the new value, kept within range
       onChange(clamp(map[e.key]));
-    // Closes the if.
     }
-  // Closes onKeyDown.
   };
 
   // Current angle of the dial.
   const deg = toDeg(value);
-  // Current flow description (class + text).
-  const flow = flowOf(value);
+  // Current flow description (class + text). Uses the real battery flow when we know it.
+  const base = flowOf(value);
+  const flow =
+    spilledKw > 0.5 ? { cls: 'charging', title: 'Battery full', sub: `${spilledKw.toFixed(0)} kW is being lost` }
+    : flowKw !== undefined && value > 0 && flowKw < 0.5 ? { cls: 'idle', title: 'Battery empty', sub: 'Nothing left to discharge' }
+    : base;
   // Position of the yellow pointer dot on the knob (radius 49, just inside the knob's edge).
   const [px, py] = pt(deg, 49);
 
@@ -118,7 +123,7 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
         {/* Title (also the slider's name for screen readers). */}
         <h3 id="dial-title">Grid power control</h3>
         {/* Usage hint (hidden by CSS when the card is narrow). */}
-        <p>Drag the knob or use arrow keys</p>
+        <p>{locked ? 'Set by automatic control' : 'Drag the knob or use arrow keys'}</p>
       </div>
       {/* Dial on top, status + buttons below. */}
       <div className="gg-dial-wrap">
@@ -134,6 +139,10 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
           role="slider"
           // Makes it reachable with the Tab key.
           tabIndex={0}
+          // Screen readers say "dimmed" while automatic control is driving it.
+          aria-disabled={locked || undefined}
+          // Dimmed, normal cursor while locked.
+          style={locked ? { cursor: 'default', opacity: 0.85 } : undefined}
           // Named "Grid power control".
           aria-labelledby="dial-title"
           // Lowest value.
@@ -147,12 +156,11 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
           // Keyboard controls.
           onKeyDown={onKeyDown}
           // Pointer pressed: start dragging, keep receiving pointer events even if it leaves the dial, and jump to that spot.
-          onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); fromPointer(e); }}
+          onPointerDown={(e) => { if (locked) return; dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); fromPointer(e); }}
           // Pointer moved: follow it, but only while dragging.
           onPointerMove={(e) => { if (dragging.current) fromPointer(e); }}
           // Pointer released: stop dragging and release the capture.
-          onPointerUp={(e) => { dragging.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}
-        // End of the opening <svg> tag.
+          onPointerUp={(e) => { if (!dragging.current) return; dragging.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}
         >
           {/* Reusable definitions for this SVG. */}
           <defs>
@@ -178,7 +186,6 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
             const [x1, y1] = pt(d, R - 20);
             // The tick line.
             return <line key={i} className="dial-tick" x1={x0} y1={y0} x2={x1} y2={y1} />;
-          // Closes the tick loop.
           })}
           {/* Number labels around the outside of the track. */}
           {[-1000, -500, 0, 500, 1000].map((v) => {
@@ -186,7 +193,6 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
             const [x, y] = pt(toDeg(v), R + 19); // just outside the track
             // The label; y + 4 centers it vertically, textAnchor centers it horizontally.
             return <text key={v} className="dial-label" x={x} y={y + 4} textAnchor="middle">{v}</text>;
-          // Closes the label loop.
           })}
           {/* The knob in the middle. */}
           <circle className="dial-knob" cx={C} cy={C} r={58} />
@@ -195,14 +201,13 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
           {/* The current value in large text on the knob. */}
           <text className="dial-value" x={C} y={C + 10} textAnchor="middle">{value}</text>
           {/* The word "power" under the value. */}
-          <text className="dial-unit" x={C} y={C + 30} textAnchor="middle">power</text>
+          <text className="dial-unit" x={C} y={C + 30} textAnchor="middle">{locked ? 'kW · auto' : 'kW'}</text>
         </svg>
 
         {/* Row under the dial. */}
         <div className="gg-dial-side">
           {/* Flow status. aria-live makes screen readers announce it when it changes. */}
           <div className={`gg-flow ${flow.cls}`} aria-live="polite">
-            {/* E.g. "Charging battery". */}
             <strong>{flow.title}</strong>
             {/* E.g. "Grid power is being stored". */}
             <span>{flow.sub}</span>
@@ -210,16 +215,14 @@ export default function PowerDial({ value, onChange }: { value: number; onChange
           {/* The nudge buttons, grouped and named for screen readers. */}
           <div className="gg-nudges" role="group" aria-label="Adjust power">
             {/* Lower by 100 (never below -1000). */}
-            <button type="button" className="gg-btn small" onClick={() => onChange(clamp(value - 100))}>−100</button>
+            <button type="button" className="gg-btn small" disabled={locked} onClick={() => onChange(clamp(value - 100))}>−100</button>
             {/* Back to 0. */}
-            <button type="button" className="gg-btn small" onClick={() => onChange(0)}>Zero</button>
+            <button type="button" className="gg-btn small" disabled={locked} onClick={() => onChange(0)}>Zero</button>
             {/* Raise by 100 (never above 1000). */}
-            <button type="button" className="gg-btn small" onClick={() => onChange(clamp(value + 100))}>+100</button>
+            <button type="button" className="gg-btn small" disabled={locked} onClick={() => onChange(clamp(value + 100))}>+100</button>
           </div>
         </div>
       </div>
     </section>
-  // Closes the return statement.
   );
-// Closes PowerDial.
 }

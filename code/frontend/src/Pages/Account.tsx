@@ -1,29 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// =============================================================================
+// Account.tsx
+// The page at /Account for the lobby for players who are logged in
+//
+// It looks identical to the Home page because it is the same page
+// So this file's only job is to give logged-in players their own address
+// that being /Account which App.tsx can protect
+// =============================================================================
 
+import Lobby from '../Lobby';
+
+// Same page as Home; Lobby shows "Log out" because you're signed in
+// App.tsx wraps this route in ProtectedRoute, so only logged-in users get here
 export default function Account() {
-  const [username, setUsername] = useState('');
-  const navigate = useNavigate();
-
-  const handlePlay = () => {
-    // Generate a random 5-character string for the unique game instance
-    const roomId = Math.random().toString(36).substring(2, 7);
-    
-    // Navigate to the game screen and pass the username in the state
-    navigate(`/game/${roomId}`, { state: { username } });
-  };
-
-  return (
-    <div style={{ textAlign: 'center', marginTop: '50px' }}>
-      <h1>Welcome to Grid Game</h1>
-      <div>
-        <button 
-          onClick={handlePlay}
-          style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
-        >
-          Play
-        </button>
-      </div>
-    </div>
-  );
+  return <Lobby />;
 }

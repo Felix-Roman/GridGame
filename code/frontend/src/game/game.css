@@ -634,9 +634,10 @@
   fill: var(--muted);
   font: 600 15px var(--font-display);     /* weight, size, family */
 }
-/* The needle group: rotates with a slight springy overshoot when frequency changes. */
+/* The needle group. The simulation updates 10x a second, so a short linear glide keeps it smooth
+   without the old springy overshoot (which would show the needle somewhere the frequency never was). */
 .gauge-needle {
-  transition: transform 0.45s cubic-bezier(.3,1.4,.5,1);
+  transition: transform 0.1s linear;
 }
 /* The needle line itself. */
 .gauge-needle line {
@@ -1461,6 +1462,95 @@
   margin: 0;
   max-width: 46ch;
 }
+
+
+/* ============================== Simulation additions ============================== */
+
+/* ROCOF line under the frequency number. */
+.gg-rocof { display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--muted); }
+.gg-rocof strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.gg-rocof strong.fast { color: var(--warn); }   /* moving faster than 0.1 Hz/s */
+
+/* Battery status line ("Charging 120 kW", "Full: losing 40 kW"). */
+.gg-batt-flow { margin-top: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.gg-batt-flow.in { color: var(--storage); }
+.gg-batt-flow.out { color: var(--signal); }
+.gg-batt-flow.spill { color: var(--warn); }
+/* Full battery that is spilling energy: the fill pulses orange. */
+.gg-cell-fill.full { background: linear-gradient(to top, color-mix(in srgb, var(--warn) 70%, #000), var(--warn)); }
+
+/* Overview tiles that need attention. */
+.gg-tile.tone-ok strong { color: var(--ok); }
+.gg-tile.tone-warn strong { color: var(--warn); }
+
+/* Inertia unit. */
+.gg-inertia .val small { font-size: 0.5em; color: var(--muted); margin-left: 3px; }
+
+/* ---- Live charts (LineChart.tsx) ---- */
+.gg-chart {
+  position: relative;
+  margin-top: 10px;
+  height: 120px;
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  overflow: hidden;
+}
+.gg-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.gg-chart-grid { stroke: color-mix(in srgb, var(--line) 55%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gg-chart-ref { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.gg-chart-y, .gg-chart-x { position: absolute; font-size: 11px; color: var(--faint); pointer-events: none; }
+.gg-chart-y { left: 6px; }
+.gg-chart-y.top { top: 4px; }
+.gg-chart-y.bottom { bottom: 4px; }
+.gg-chart-x { bottom: 4px; right: 6px; }
+.gg-chart-x:not(.now) { right: auto; left: 50%; translate: -50% 0; }
+
+/* ---- Market tables ---- */
+.gg-table tr.gg-row td { padding: 8px; color: var(--text); text-align: left; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.gg-table tr.gg-row:last-child td { border-bottom: 0; }
+.gg-table tr.gg-row td:last-child { text-align: right; }
+.gg-muted { color: var(--muted); font-size: 13px; }
+.gg-form-error { color: var(--trip); font-size: 13px; margin: 10px 0 0; }
+.gg-pill-live {
+  display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); font-variant-numeric: tabular-nums;
+}
+.gg-history { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+
+/* "Grid down" in the player list. */
+.gg-tripped { color: var(--trip); font-weight: 600; }
+
+/* ---- Game over (GameOver.tsx) ---- */
+.gg-over {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in srgb, #05090d 72%, transparent);
+  backdrop-filter: blur(3px);
+}
+.gg-over-card {
+  width: min(460px, 100%);
+  padding: 26px;
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--trip) 55%, var(--line));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.gg-over-card h2 { font-size: 34px; color: var(--trip); }
+.gg-over-card > p { margin: 0; color: var(--muted); }
+.gg-over-stats { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gg-over-stats div { padding: 10px 12px; border-radius: var(--radius-md); background: var(--raised); }
+.gg-over-stats dt { color: var(--muted); font-size: 13px; }
+.gg-over-stats dd { margin: 2px 0 0; font: 600 22px var(--font-display); }
+.gg-over-actions { display: flex; gap: 10px; }
+.gg-over-actions .gg-btn { height: 42px; padding: 0 20px; font-size: 15px; text-decoration: none; color: var(--text); }
+.gg-over-actions .gg-btn.primary { color: var(--signal-ink); }
 
 
 /* ============================== Responsive ============================== */

@@ -1,19 +1,17 @@
 // =============================================================================
 // PlayerRoster.tsx
-// The list of players in this room (replaces the old LeftPanel). Each card
-// shows the player's score, time, battery and frequency status. The panel
-// collapses to a narrow rail of avatars; each avatar has a colored ring that
-// shows that player's frequency status.
-// The PID gains moved from a hover-only tooltip into a <details> section, so
-// keyboard and touchscreen players can open them too.
+// The list of players in this room, this replaces the old LeftPane
+// Each card shows the player's score, time, battery and frequency status
+// The panel collapses to a narrow rail of avatars and each avatar has a colored ring that shows that player's frequency status
+// The PID gains moved from a hover-only tooltip into a <details> section
+// this is so keyboard and touchscreen players can open them too
 // =============================================================================
 
-// Helpers and types from types.ts: clock/money formatting, status lookups, and the PlayerData shape.
+// Helpers and types from types.ts
 import { formatClock, formatMoney, frequencyStatus, statusLabel, type PlayerData } from '../types';
-// The icon component (used for the collapse arrow).
 import Icon from './Icon';
 
-// The props (inputs) this component accepts.
+// The inputs this component accepts
 type Props = {
   players: PlayerData[];                   // everyone in the room
   currentUsername: string;                 // this player's name, to mark "You"
@@ -83,7 +81,9 @@ export default function PlayerRoster({ players, currentUsername, collapsed, onTo
           // That player's frequency status ('stable' / 'drifting' / 'critical').
           const status = frequencyStatus(p.frequency);
           // Their battery as a percent of capacity, clamped to 0..100.
-          const batteryPct = Math.min(100, Math.max(0, (p.battery / batteryCapacity) * 100));
+          // (Uses that player's own capacity when the server sent it.)
+          const cap = p.batteryCapacity || batteryCapacity;
+          const batteryPct = cap > 0 ? Math.min(100, Math.max(0, (p.battery / cap) * 100)) : 0;
 
           // Returns this player's card.
           return (
@@ -105,7 +105,9 @@ export default function PlayerRoster({ players, currentUsername, collapsed, onTo
                       {p.username}{me && <small>You</small>}
                     </div>
                     {/* E.g. "$1,800 in 0:00:02". */}
-                    <div className="gg-player-sub">{formatMoney(p.score)} in {formatClock(p.timeSeconds)}</div>
+                    <div className="gg-player-sub">
+                      {p.tripped ? <span className="gg-tripped">Grid down</span> : <>{formatMoney(p.score)} in {formatClock(p.timeSeconds)}</>}
+                    </div>
                   </div>
                 )}
               </div>

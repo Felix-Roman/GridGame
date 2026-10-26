@@ -1,87 +1,79 @@
 // =============================================================================
 // AutoControl.tsx
-// The Automatic Control card: an On/Off switch and the three PID gains.
-//   Main = Kp (proportional), Sum = Ki (integral), Rate = Kd (derivative).
-// See the EE document for what each gain does to the frequency.
+// The Automatic Control card: an On/Off switch and the three PID gains
+// Main = Kp (proportional), Sum = Ki (integral), Rate = Kd (derivative)
+// See the EE document for what each gain does to the frequency
+//
+// When automatic control is On, engine.ts turns the battery dial for the user 10 times a second
+// Main (Kp): the bigger the error RIGHT NOW, the harder it pushes
+// Sum  (Ki): keeps pushing while a small error lingers, until it's gone
+// Rate (Kd): pushes against FAST changes, so the needle doesn't overshoot
 // =============================================================================
 
-// The TypeScript type for the three gains ({ main, sum, rat }).
 import type { PidGains } from '../types';
 
-// The props (inputs) this component accepts.
+// The inputs this component accepts
 type Props = {
-  gains: PidGains;                         // current Main / Sum / Rate values
-  isOn: boolean;                           // whether automatic control is switched on
-  onGainsChange: (g: PidGains) => void;    // called with the new gains when an input changes
-  onToggle: () => void;                    // called when the On/Off switch is clicked
-// Closes Props.
+  gains: PidGains;
+  isOn: boolean;
+  onGainsChange: (g: PidGains) => void;
+  onToggle: () => void;
 };
 
-// One entry per input field, so the three fields can be drawn with a single loop.
+// One entry per input field, so the three fields can be drawn with a single loop
+// keyof PidGains means key must be one of PidGains' field names: 'main', 'sum' or 'rat'
+// That's what lets gains[f.key] below safely read the right value
 const fields: { key: keyof PidGains; label: string; abbr: string; hint: string }[] = [
-  { key: 'main', label: 'Main', abbr: 'Kp', hint: 'Reacts to how far frequency is from 60 Hz' },    // proportional gain
-  { key: 'sum', label: 'Sum', abbr: 'Ki', hint: 'Removes small offsets that build up over time' },  // integral gain
-  { key: 'rat', label: 'Rate', abbr: 'Kd', hint: 'Damps fast swings of the needle' },               // derivative gain
-// Closes the fields list.
+  { key: 'main', label: 'Main', abbr: 'Kp', hint: 'Reacts to how far frequency is from 60 Hz' },
+  { key: 'sum', label: 'Sum', abbr: 'Ki', hint: 'Removes small offsets that build up over time' },
+  { key: 'rat', label: 'Rate', abbr: 'Kd', hint: 'Damps fast swings of the needle' },
 ];
 
-// The component.
+// The component, The four inputs above are pulled out into variables
 export default function AutoControl({ gains, isOn, onGainsChange, onToggle }: Props) {
-  // Draws the card.
+  // Draws the card
   return (
-    // The card, named by its title.
+    // The card named by its title
     <section className="gg-card gg-auto" aria-labelledby="auto-title">
-      {/* Left column: title above the switch. */}
       <div className="gg-auto-title">
-        {/* Card title (also names the switch). */}
+        {/* Card title */}
         <h3 id="auto-title">Automatic control</h3>
-        {/* The On/Off switch. role="switch" + aria-checked tells screen readers it is a toggle and whether it is on. */}
+        {/* The On/Off switch. It's a real <button>, so it works with mouse, keyboard (Space/Enter) and touch */}
         <button type="button" role="switch" aria-checked={isOn} aria-labelledby="auto-title" className="gg-switch" onClick={onToggle}>
-          {/* The sliding track and thumb (styled in game.css; the thumb moves when aria-checked is true). */}
           <span className="track"><span className="thumb" /></span>
-          {/* Visible text next to the switch. */}
+          {/* Visible text next to the switch */}
           {isOn ? 'On' : 'Off'}
         </button>
       </div>
 
-      {/* Right column: the three gain inputs in a row. */}
+      {/* the three gain inputs in a row */}
       <div className="gg-gains">
-        {/* Draw one label + input for each entry in "fields". */}
+        {/* Draw one label and input for each entry in "fields" */}
         {fields.map((f) => (
-          // One field. key = which gain it edits.
           <div className="gg-field" key={f.key}>
-            {/* Label linked to its input by htmlFor/id, so clicking the label focuses the input. title shows the hint on hover. */}
             <label htmlFor={`pid-${f.key}`} title={f.hint}>
-              {/* "Main" / "Sum" / "Rate". */}
               {f.label}
-              {/* "Kp" / "Ki" / "Kd", with the hint as a hover tooltip. */}
               <abbr title={f.hint}>{f.abbr}</abbr>
             </label>
-            {/* The number input. */}
+            {/* The number input, Another "controlled input" its value always comes from the gains prop */}
             <input
-              // Matches the label's htmlFor.
+              // Matches the label
               id={`pid-${f.key}`}
-              // Styling.
+              // Styling
               className="gg-input"
-              // Numeric input with up/down spinner.
+              // Numeric input with up and down spinner
               type="number"
-              // Shows a number keypad (with decimal point) on phones.
+              // Shows a number keypad
               inputMode="decimal"
-              // Current value of this gain.
               value={gains[f.key]}
-              // Screen readers also read the hint text below.
+              // Screen readers also read the hint text below
               aria-describedby={`pid-${f.key}-hint`}
-              // On every edit, send back a copy of the gains with just this one changed. [f.key] picks which property.
               onChange={(e) => onGainsChange({ ...gains, [f.key]: Number(e.target.value) })}
-            // Closes the input.
             />
-            {/* The hint, visible only to screen readers. */}
             <span id={`pid-${f.key}-hint`} className="sr-only">{f.hint}</span>
           </div>
         ))}
       </div>
     </section>
-  // Closes the return statement.
   );
-// Closes AutoControl.
 }

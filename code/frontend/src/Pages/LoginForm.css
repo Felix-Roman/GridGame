@@ -1,14 +1,18 @@
-.wrapper{
-    min-height: 100vh;
+.wrapper {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
     display: flex;
-    justify-content: center; 
+    justify-content: center;
     align-items: center;
+    padding: 20px;
     background-color: #f8fafc;
     font-family: Arial, Helvetica, sans-serif;
 }
 
-form{
+.wrapper form {
     width: 320px;
+    max-width: 100%;
     padding: 40px 32px;
     display: flex;
     flex-direction: column;
@@ -16,10 +20,9 @@ form{
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-
 }
 
-h2{
+.wrapper h2 {
     margin: 0;
     color: #1e293b;
     text-align: center;
@@ -28,7 +31,7 @@ h2{
     letter-spacing: -0.5px;
 }
 
-input{
+.wrapper input {
     width: 100%;
     padding: 12px 16px;
     box-sizing: border-box;
@@ -41,19 +44,19 @@ input{
     transition: border-color 0.2s ease;
 }
 
-input::placeholder{
+.wrapper input::placeholder {
     color: #94a3b8;
 }
 
-input:focus{
+.wrapper input:focus {
     border-color: #3b82f6;
 }
 
-button{
+.wrapper button {
     margin-top: 8px;
     padding: 14px;
     background-color: #3b82f6;
-    color:#ffffff;
+    color: #ffffff;
     border: none;
     border-radius: 6px;
     font-size: 1rem;
@@ -62,10 +65,32 @@ button{
     transition: background-color 0.2s ease;
 }
 
-button:hover{
+.wrapper button:hover:not(:disabled) {
     background-color: #2563eb;
 }
 
-button:active{
+.wrapper button:active:not(:disabled) {
     background-color: #1d4ed8;
+}
+
+.wrapper button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.wrapper .form-error {
+    margin: 0;
+    color: crimson;
+    text-align: center;
+}
+
+.wrapper .form-links {
+    margin: 0;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.wrapper .form-links a {
+    color: #2563eb;
 }
