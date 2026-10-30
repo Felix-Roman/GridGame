@@ -71,7 +71,7 @@
             FrontEndPathTextBox.Name = "FrontEndPathTextBox";
             FrontEndPathTextBox.Size = new Size(450, 31);
             FrontEndPathTextBox.TabIndex = 3;
-            FrontEndPathTextBox.Text = "D:\\OneDrive\\Desktop\\CPTS421 GridGame\\GridGame2026\\GridGame2026\\GridGame2026FrontEnd";
+            FrontEndPathTextBox.Text = "D:\\OneDrive\\Desktop\\CPTS421 GridGame\\GridGame2026Git\\code\\frontend";
             // 
             // BackEndPathTextBox
             // 
@@ -79,7 +79,7 @@
             BackEndPathTextBox.Name = "BackEndPathTextBox";
             BackEndPathTextBox.Size = new Size(450, 31);
             BackEndPathTextBox.TabIndex = 4;
-            BackEndPathTextBox.Text = "D:\\OneDrive\\Desktop\\CPTS421 GridGame\\GridGame2026\\GridGame2026\\GridGame2026BackEnd";
+            BackEndPathTextBox.Text = "D:\\OneDrive\\Desktop\\CPTS421 GridGame\\GridGame2026Git\\code\\backend";
             // 
             // FrontEndDirectoryPathLabel
             // 
@@ -99,7 +99,7 @@
             BackEndDirectoryPathLabel.TabIndex = 6;
             BackEndDirectoryPathLabel.Text = "Back End Directory Path";
             // 
-            // Form1
+            // GridGameServerHoster
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -111,7 +111,7 @@
             Controls.Add(StopLocalServerButton);
             Controls.Add(StartLocalServerButton);
             Controls.Add(ConsoleLogWindowLabel);
-            Name = "Form1";
+            Name = "GridGameServerHoster";
             Text = "Form1";
             ResumeLayout(false);
             PerformLayout();

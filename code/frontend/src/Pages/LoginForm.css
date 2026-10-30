@@ -1,0 +1,96 @@
+.wrapper {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background-color: #f8fafc;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.wrapper form {
+    width: 320px;
+    max-width: 100%;
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.wrapper h2 {
+    margin: 0;
+    color: #1e293b;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.wrapper input {
+    width: 100%;
+    padding: 12px 16px;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background-color: transparent;
+    outline: none;
+    font-size: 1rem;
+    color: #1e293b;
+    transition: border-color 0.2s ease;
+}
+
+.wrapper input::placeholder {
+    color: #94a3b8;
+}
+
+.wrapper input:focus {
+    border-color: #3b82f6;
+}
+
+.wrapper button {
+    margin-top: 8px;
+    padding: 14px;
+    background-color: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.wrapper button:hover:not(:disabled) {
+    background-color: #2563eb;
+}
+
+.wrapper button:active:not(:disabled) {
+    background-color: #1d4ed8;
+}
+
+.wrapper button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.wrapper .form-error {
+    margin: 0;
+    color: crimson;
+    text-align: center;
+}
+
+.wrapper .form-links {
+    margin: 0;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.wrapper .form-links a {
+    color: #2563eb;
+}

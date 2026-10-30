@@ -23,11 +23,11 @@ namespace GridGame2026
         /// <param name="e"></param>
         private void StartLocalServerButton_Click(object sender, EventArgs e)
         {
+            // If changes were made but nothing looks changed do npm run build on the frontend and backend
             try
             {
                 // If either process object exists and hasn't been closed, the servers are already active
-                if ((backendProcess != null && !backendProcess.HasExited) ||
-                    (frontendProcess != null && !frontendProcess.HasExited))
+                if ((backendProcess != null && !backendProcess.HasExited) || (frontendProcess != null && !frontendProcess.HasExited))
                 {
                     MessageBox.Show("Servers are already running!", "Already Running", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return; // Stop executing this method so no new or extra terminals are open
