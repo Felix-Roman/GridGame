@@ -38,6 +38,7 @@ import mongoose from 'mongoose';
 import { connectDB } from './db';
 import { authRouter } from './auth';
 import { gamesRouter } from './games';
+import { leaderboardRouter } from './leaderboard';
 import { attachGameSockets } from './gameSocket';
 
 // Creates the Express application so I can add middleware and routes to it
@@ -91,6 +92,8 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 // Everything starting with /api/games goes to games.ts's router
 app.use('/api/games', gamesRouter);
+// Everything starting with /api/leaderboard goes to leaderboard.ts's router
+app.use('/api/leaderboard', leaderboardRouter);
 // Any other /api/ path didn't match above, so it doesn't exist: reply 404 as JSON
 app.use('/api', (_req, res) => {
   // 404 is "Not Found", I think this is pretty common one but Ima comment it anyways

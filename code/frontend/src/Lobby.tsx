@@ -9,7 +9,7 @@
 // Right card: live list of active games, with Join (asks for the password if needed)
 // =============================================================================
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { connectSocket } from './socket';
 import { createGame, type GameSummary } from './api';
@@ -125,6 +125,8 @@ export default function Lobby() {
           <h1>Grid Game</h1>
         </div>
         <nav className="lb-auth">
+          {/* Link to the leaderboards page (styled in Pages/Leaderboards.css) */}
+          <Link className="lbd-nav" to="/Leaderboards">Leaderboards</Link>
           {account ? (
             <>
               <span className="lb-signed">
