@@ -20,9 +20,9 @@
 import type { Server } from 'socket.io';
 import bcrypt from 'bcryptjs';
 import { COOKIE_NAME, verifyToken } from './auth';
+import { saveGameResult } from './leaderboard';
 import { allGames, cleanName, clearLobbyDirty, getGame, listGames, lobbyIsDirty, markLobbyDirty, maxPlayers, playersOf, sweepEmptyGames, type GameRoom, type PlayerState, } from './games';
 import { acceptOffer, cancelOffer, cancelOffersBy, expireContracts, makeOffer, publicContracts } from './market';
-
 // The name of the Socket.IO room for everyone looking at the Home/Account page
 const LOBBY_ROOM = 'lobby:list';
 // How often the broadcast loop runs, every 250 ms
@@ -328,8 +328,17 @@ export function attachGameSockets(io: Server) {
       s.battery = num(d.battery, -1e9, 1e9) ?? s.battery;
       s.frequency = num(d.frequency, 0, 1000) ?? s.frequency;
       s.batteryCapacity = num(d.batteryCapacity, 0, 1e9) ?? s.batteryCapacity;
+      // Remember whether the grid was ALREADY down before this update, so we can spot the moment it trips
+      const wasTripped = s.tripped;
       // tripped must be exactly true or false
       if (typeof d.tripped === 'boolean') s.tripped = d.tripped;
+      // Leaderboards, the grid just went from up to tripped, so this game is over
+      // Save it only for signed-in players
+      // The browser sends its final score and time in this same update, so s.score and s.timeSeconds are the final numbers
+      // We don't "await" it, the save happens in the background and the game carries on
+      if (!wasTripped && s.tripped && member.account) {
+        void saveGameResult({ username: member.account, gameId: game.id, score: s.score, timeSeconds: s.timeSeconds });
+      }
       // The automatic-control gains, if sent, as an object
       if (d.pid && typeof d.pid === 'object') {
         // Treat it as an object with fields to check

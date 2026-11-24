@@ -22,6 +22,8 @@ import LoginForm from './Pages/LoginForm';
 import Account from './Pages/Account';
 // The sign-up page
 import CreateAccount from './Pages/CreateAccount';
+// The leaderboards page
+import Leaderboards from './Pages/LeaderBoard';
 // Provides the shared login state to every page inside it
 import { AuthProvider } from './AuthContext';
 // A wrapper that only shows its contents to logged-in players
@@ -42,6 +44,8 @@ function App() {
           <Route path="/CreateAccountForm" element={<CreateAccount />} />
           {/* The logged-in lobby */}
           <Route path="/Account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          {/* Not protected, so guests can see the leaderboards too */}
+          <Route path="/Leaderboards" element={<Leaderboards />} />
           {/* Not protected so guests can play too */}
           <Route path="/game/:roomId" element={<Game />} />
           <Route path="*" element={<Navigate to="/" replace />} />

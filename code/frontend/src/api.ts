@@ -24,6 +24,31 @@ export interface NewGame {
   password?: string;
 }
 
+// Leaderboard.tsx defines what a row lookslike
+export interface LeaderboardEntry {
+  name: string;
+  highScore: number;
+  highScoreTime: number;
+  totalEarned: number;
+  longestSurvived: number;
+  gamesPlayed: number;
+}
+
+// Asks the server for every player's leaderboard stats (GET /api/leaderboard in backend/src/leaderboard.ts)
+// period, 'all' = every game ever, 'week' = the last 7 days, 'today' = since midnight
+// Returns the list of players, or { error } if the server can't be reached
+export async function getLeaderboard(period: 'all' | 'week' | 'today'): Promise<LeaderboardEntry[] | { error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/leaderboard?period=${period}`, { credentials: 'include' });
+    const data = await res.json().catch(() => ({}));
+    // Array.isArray checks the reply really has a list before we use it
+    if (res.ok && Array.isArray(data.entries)) return data.entries as LeaderboardEntry[];
+    return { error: data.error ?? 'Could not load the leaderboards' };
+  } catch {
+    return { error: 'Cannot reach the server' };
+  }
+}
+
 // Creates a game on the server
 // It returns a Promise
 // Lobby.tsx checks which one it got with, if ('error' in result)
