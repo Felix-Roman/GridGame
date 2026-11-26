@@ -7,6 +7,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 export const API_URL: string = import.meta.env.VITE_API_URL ?? '';
 
+// What login() tells the page: an error, OR "the password was right, now ask for the 2FA code"
+export interface LoginResult {
+  error: string | null;
+  twoFactorRequired: boolean;
+}
+
 // The shape of what the context provides orwhat useAuth() returns
 interface AuthCtx {
   // username, or null if they are a guest or logged out
@@ -14,7 +20,9 @@ interface AuthCtx {
   // true until the first "who am I?" check finishes. Pages wait on this so they don't
   // wrongly treat you as logged out for a split second on page load
   loading: boolean;
-  login: (u: string, p: string) => Promise<string | null>;
+  login: (u: string, p: string) => Promise<LoginResult>;
+  // Second half of login for 2FA users. Returns an error message or null on success
+  loginCode: (code: string) => Promise<string | null>;
   // Sign up with username, email, password
   register: (u: string, e: string, p: string) => Promise<string | null>;
   // Log out
@@ -72,15 +80,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // Log in
-  const login = async (u: string, p: string) => {
-    // Send the username and password
+  const login = async (u: string, p: string): Promise<LoginResult> => {
     const { ok, data } = await post('login', { username: u, password: p });
-    // Success, remember the name
-    if (ok) setUsername(data.username);
-    // null for success otherwise the server's message, or a generic one
-    return ok ? null : data.error ?? 'Login failed';
+    if (!ok) return { error: data.error ?? 'Login failed', twoFactorRequired: false };
+    // Password was right but 2FA is on. NOT logged in yet, so don't set the username
+    if (data.twoFactorRequired) return { error: null, twoFactorRequired: true };
+    setUsername(data.username);
+    return { error: null, twoFactorRequired: false };
   };
+
+  const loginCode = async (code: string) => {
+    const { ok, data } = await post('login/2fa', { code });
+    if (ok) setUsername(data.username);
+    return ok ? null : data.error ?? 'Could not check the code';
+  };
+  
   // Sign up. Same pattern, with an email too. The server logs you in straight away on success
   const register = async (u: string, e: string, p: string) => {
     const { ok, data } = await post('register', { username: u, email: e, password: p });
@@ -96,5 +110,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Share the state and the three functions with everything inside, then draw the children
-  return <Ctx.Provider value={{ username, loading, login, register, logout }}>{children}</Ctx.Provider>;
+    return <Ctx.Provider value={{ username, loading, login, loginCode, register, logout }}>{children}</Ctx.Provider>;
 }

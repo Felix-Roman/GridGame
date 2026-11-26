@@ -37,6 +37,7 @@ import helmet from 'helmet';
 import mongoose from 'mongoose';
 import { connectDB } from './db';
 import { authRouter } from './auth';
+import { twoFactorRouter } from './twoFactor';
 import { gamesRouter } from './games';
 import { leaderboardRouter } from './leaderboard';
 import { attachGameSockets } from './gameSocket';
@@ -90,6 +91,8 @@ app.get('/api/health', (_req, res) => {
 
 // Everything starting with /api/auth goes to auth.ts router
 app.use('/api/auth', authRouter);
+// 2FA setup routes: /api/auth/2fa/setup, /enable, /status
+app.use('/api/auth/2fa', twoFactorRouter);
 // Everything starting with /api/games goes to games.ts's router
 app.use('/api/games', gamesRouter);
 // Everything starting with /api/leaderboard goes to leaderboard.ts's router

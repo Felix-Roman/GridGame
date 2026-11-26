@@ -94,3 +94,45 @@
 .wrapper .form-links a {
     color: #2563eb;
 }
+
+/* Helper text on dark backgrounds (2FA instructions) */
+.wrapper .form-note {
+    margin: 0;
+    color: #cbd5e1;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* The setup key shown under the QR code, for people who type it in */
+.wrapper .form-secret {
+    display: block;
+    padding: 10px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
+    color: #FFFF00;
+    text-align: center;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    word-break: break-all;
+}
+
+/* The QR code. White background so phone cameras can read it on the dark page */
+.wrapper .form-qr {
+    align-self: center;
+    width: 200px;
+    height: 200px;
+    padding: 8px;
+    background: #ffffff;
+    border-radius: 6px;
+}
+
+/* A button that looks like a link (for "Use a different account") */
+.wrapper .form-links .link-btn {
+    margin: 0;
+    padding: 0;
+    background: none;
+    color: #2563eb;
+    text-decoration: underline;
+    font-size: 0.9rem;
+}
+.wrapper .form-links .link-btn:hover:not(:disabled) { background: none; }

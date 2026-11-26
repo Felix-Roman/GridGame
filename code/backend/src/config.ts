@@ -91,6 +91,13 @@ if (jwtSecret.length < 32) {
   // console.warn prints to the terminal like console.log, marked as a warning.
   console.warn('[config] JWT_SECRET is shorter than 32 characters. Use a longer random value.');
 }
+
+// The key that encrypts 2FA secrets in the database. Must be 32 bytes written as 64 hex characters
+const twoFactorKey = process.env.TWO_FACTOR_KEY?.trim() ?? '';
+// Missing or the wrong format? Stop right away, the same way a missing JWT_SECRET does
+if (!/^[0-9a-fA-F]{64}$/.test(twoFactorKey)) {
+  throw new Error('TWO_FACTOR_KEY must be 64 hex characters. See backend/.env.example.');
+}
  
 // the settings object
 // The one object the rest of the backend uses like config.port in server.ts or config.jwtSecret in auth.ts
@@ -106,6 +113,8 @@ export const config = {
   mongoUri: process.env.MONGO_URI?.trim() || 'mongodb://127.0.0.1:27017/gridgame',
   // the checked jwt secret from above
   jwtSecret,
+  // the checked 2FA encryption key from above (used by crypto2fa.ts)
+  twoFactorKey,
   // auto = mark the login cookie "Secure" only when the visitor is on https
   // Missing COOKIE_SECURE -> 'auto'
   cookieSecure: parseFlag(process.env.COOKIE_SECURE, 'auto'),

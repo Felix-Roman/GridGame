@@ -129,6 +129,7 @@ export default function Lobby() {
           <Link className="lbd-nav" to="/Leaderboards">Leaderboards</Link>
           {account ? (
             <>
+              <Link className="lbd-nav" to="/Security">Security</Link>
               <span className="lb-signed">
                 Signed in as <strong>{account}</strong>
               </span>

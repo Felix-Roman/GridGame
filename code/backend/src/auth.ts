@@ -30,11 +30,18 @@ import rateLimit from 'express-rate-limit';
 import { User } from './models/User';
 // All settings read from backend/.env mainly the JWT secret, cookie settings, etc.)
 import { config } from './config';
+// Used by /login/2fa to decrypt the secret and check the code
+import { decryptSecret } from './crypto2fa';
+import { verifyCode } from './totp';
 
 // The name of the cookie that holds the login token and "export" lets server.ts / gameSocket.ts use it too.
 export const COOKIE_NAME = 'GridGame2026';
 // How long a login will last in milliseconds: 1000 ms * 60 sec * 60 min * 24 hours * 7 days = 7 days in seconds
 const SESSION_MS = 1000 * 60 * 60 * 24 * 7;
+// The short-lived cookie for "password was right, waiting for the 2FA code"
+const PENDING_COOKIE = 'GridGame2026_2fa';
+// 5 minutes to type the code, then they have to log in again
+const PENDING_MS = 1000 * 60 * 5;
 // A regular expression that usernames MUST match
 // ^ ... $ = the WHOLE string must match, not just part of it
 // [A-Za-z0-9_-] = letters, digits, underscore or dash
@@ -63,7 +70,29 @@ function cookieOptions(req: Request): CookieOptions {
 // secret config.jwtSecret = the private key from .env; only our server knows it, so only we can make valid tokens, unless someone steals it like the declaration of indepence (Nicholas Cage)
 // options expiresIn '7d' = the token stops being valid after 7 days
 // The result is a random looking string that people shouldn't be able to break into it's secret parts
-const sign = (id: string, username: string) => jwt.sign({ sub: id, username }, config.jwtSecret, { expiresIn: '7d' });
+// typ: 'session' marks this as a REAL login token. verifyToken only accepts this type,
+// so the 2FA pending token below can never be used as a login
+const sign = (id: string, username: string) =>
+  jwt.sign({ sub: id, username, typ: 'session' }, config.jwtSecret, { expiresIn: '7d' });
+
+// The pending token proves only "the password was right". It has no username and a different typ
+const signPending = (id: string) =>
+  jwt.sign({ sub: id, typ: '2fa-pending' }, config.jwtSecret, { expiresIn: '5m' });
+
+// Reads the pending cookie and returns the user id, or null if it's missing, expired, fake, or the wrong type
+function readPending(req: Request): string | null {
+  const token = req.cookies?.[PENDING_COOKIE];
+  if (typeof token !== 'string' || !token) return null;
+  try {
+    const p = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload;
+    return p.typ === '2fa-pending' && typeof p.sub === 'string' ? p.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+// Pending cookie settings. path '/api/auth' means the browser only sends it to the auth routes
+const pendingCookieOptions = (req: Request): CookieOptions => ({ ...cookieOptions(req), path: '/api/auth' });
 
 // This interface describes what a TokenUser should look like
 export interface TokenUser {
@@ -85,8 +114,8 @@ export function verifyToken(token: unknown): TokenUser | null {
   try {
     // Check the signature with our secret and the expiry date. If it's valid, we get the payload back
     const p = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload;
-    // Extra safety, make sure the payload really contains the two fields we put in it
-    if (typeof p.sub !== 'string' || typeof p.username !== 'string'){
+    // Extra safety: the payload must contain our fields AND be a real session token, not a 2FA pending one
+    if (typeof p.sub !== 'string' || typeof p.username !== 'string' || p.typ !== 'session'){
          return null;
     }
     // Valid token? return who it belongs to if so
@@ -221,10 +250,59 @@ authRouter.post('/login', credentialLimiter, async (req, res) => {
     // error code 401 is "Unauthorized"
     return res.status(401).json({ error: 'Invalid username or password' });
   }
-  // if the correct password uis given set the login cookie same as at the end of register
+  // Password is right. If 2FA is on, DON'T log them in yet: hand out the 5-minute pending cookie instead
+  if (user.twoFactorEnabled) {
+    res.cookie(PENDING_COOKIE, signPending(user.id), { ...pendingCookieOptions(req), maxAge: PENDING_MS });
+    return res.json({ twoFactorRequired: true });
+  }
+  // No 2FA: log in exactly like before
   res.cookie(COOKIE_NAME, sign(user.id, user.username), { ...cookieOptions(req), maxAge: SESSION_MS });
-  // send default status 200 "OK", then send back the username
   res.json({ username: user.username });
+});
+
+// Its own limiter so code guessing is capped separately from password guessing
+const codeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many attempts. Try again in a few minutes.' },
+});
+
+// POST /api/auth/login/2fa { code }: the second half of logging in for 2FA users
+authRouter.post('/login/2fa', codeLimiter, async (req, res) => {
+  const { code } = req.body ?? {};
+  if (typeof code !== 'string') return res.status(400).json({ error: 'Invalid input' });
+
+  // No valid pending cookie means they never passed the password step, or took longer than 5 minutes
+  const userId = readPending(req);
+  if (!userId) return res.status(401).json({ error: 'Your login expired. Please log in again.' });
+
+  try {
+    const user = await User.findById(userId);
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(401).json({ error: 'Your login expired. Please log in again.' });
+    }
+
+    // Check the code. Passing twoFactorLastStep rejects codes from a window that was already used
+    const step = verifyCode(decryptSecret(user.twoFactorSecret), code.replace(/\s/g, ''), user.twoFactorLastStep);
+    if (step === null) return res.status(401).json({ error: 'That code is not right. Check your app and try again.' });
+
+    // Save the used window ONLY if it's newer than the last one, in a single database operation.
+    // If two requests arrive at once with the same code, only one of them can win this update
+    const result = await User.updateOne(
+      { _id: user._id, twoFactorLastStep: { $lt: step } },
+      { $set: { twoFactorLastStep: step } },
+    );
+    if (result.modifiedCount !== 1) return res.status(401).json({ error: 'That code was already used. Wait for the next one.' });
+
+    // Success: remove the pending cookie and give them the real login cookie
+    res.clearCookie(PENDING_COOKIE, pendingCookieOptions(req));
+    res.cookie(COOKIE_NAME, sign(user.id, user.username), { ...cookieOptions(req), maxAge: SESSION_MS });
+    res.json({ username: user.username });
+  } catch (err) {
+    console.error('[login 2fa]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // POST /api/auth/logout 
@@ -236,6 +314,8 @@ authRouter.post('/logout', (req, res) => {
   res.clearCookie(COOKIE_NAME, cookieOptions(req));
   // Confirm it worked
   res.json({ ok: true });
+  // Also remove a leftover 2FA pending cookie, if there is one
+  res.clearCookie(PENDING_COOKIE, pendingCookieOptions(req));
 });
 
 // GET /api/auth/me 

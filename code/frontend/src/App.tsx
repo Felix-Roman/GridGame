@@ -28,6 +28,7 @@ import Leaderboards from './Pages/LeaderBoard';
 import { AuthProvider } from './AuthContext';
 // A wrapper that only shows its contents to logged-in players
 import ProtectedRoute from './ProtectedRoute';
+import Security from './Pages/Security';
 
 // The root component
 function App() {
@@ -44,6 +45,7 @@ function App() {
           <Route path="/CreateAccountForm" element={<CreateAccount />} />
           {/* The logged-in lobby */}
           <Route path="/Account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/Security" element={<ProtectedRoute><Security /></ProtectedRoute>} />
           {/* Not protected, so guests can see the leaderboards too */}
           <Route path="/Leaderboards" element={<Leaderboards />} />
           {/* Not protected so guests can play too */}
